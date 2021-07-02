@@ -63,9 +63,13 @@ def main(mytimer: func.TimerRequest) -> None:
     # Get datapoints for per state in Malaysia
     url = "https://raw.githubusercontent.com/CITF-Malaysia/citf-public/main/vaccination/vax_state.csv"
     df = pd.read_csv(url)
+
+    # Take the latest date's data (16 states)
     df_trim = df.iloc[-16:]
+    # Sort rank by most doses
     df_trim = df_trim.sort_values('total_cumul')
 
+    # Plot the graph
     state_progress = px.bar(df_trim, x="total_cumul", y="state", 
                             labels={
                                 "total_cumul": "Doses",
@@ -74,6 +78,8 @@ def main(mytimer: func.TimerRequest) -> None:
                             title='Doses administered by state',
 
                             orientation='h')
+                            
+    # Convert plotted graph into HTML div
     state_plot = state_progress.to_html(full_html=False)
 
     # Crude HTML templates

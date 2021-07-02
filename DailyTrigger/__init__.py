@@ -55,7 +55,7 @@ def main(mytimer: func.TimerRequest) -> None:
                             "day_of_week": "",
                             "total_daily": "Total doses administered to date"
                         },
-                        title='Doses administed by day distribution')
+                        title='Doses administered by day distribution')
 
     # Convert plotted graph into HTML div
     day_trend_plot = day_trend.to_html(full_html=False)
@@ -71,13 +71,13 @@ def main(mytimer: func.TimerRequest) -> None:
                                 "total_cumul": "Doses",
                                 "state": "State",
                             },
-                            title='Doses administed by state',
+                            title='Doses administered by state',
 
                             orientation='h')
     state_plot = state_progress.to_html(full_html=False)
 
     # Crude HTML templates
-    HeadTemplate = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>*{box-sizing: border-box;}.header{padding: 15px;}.row::after{content: ""; clear: both; display: table;}[class*="col-"]{float: left; padding: 15px; border: 1px solid rgba(9, 255, 0, 0.733);}.col-1{width: 50%;}</style></head><body><div class="header">'
+    HeadTemplate = '<!DOCTYPE html><html> <head><script async src="https://www.googletagmanager.com/gtag/js?id=G-JM59LT7FPT"></script><script>window.dataLayer=window.dataLayer || []; function gtag(){dataLayer.push(arguments);}gtag(\'js\', new Date()); gtag(\'config\', \'G-JM59LT7FPT\');</script> <meta name="viewport" content="width=device-width, initial-scale=1.0"><meta property="og:image" content="https://kururugi.blob.core.windows.net/kururugi/screenshot.jpg"/><meta property="og:title" content="Project Kururugi"/><meta property="og:description" content="Analysis and plotting of the official vaccination statistics data from JKJAV Malaysia"/> <style>*{box-sizing: border-box;}.header{padding: 15px;}.row::after{content: ""; clear: both; display: table;}[class*="col-"]{float: left; padding: 15px; border: 1px solid rgba(9, 255, 0, 0.733);}.col-1{width: 50%;}</style> </head> <body> <div class="header">'
     Close = '</div>'
     RowOpen = '<div class="row">'
     ColOpen = '<div class="col-1">'
@@ -88,7 +88,7 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write(HeadTemplate)
         f.write("<h1>Vaccination Statistics Malaysia</h1>")
         f.write("<a href='https://kururugi.blob.core.windows.net/kururugi/about.html'>Technical details & about</a><br>Coded by: Amin Husni (aminhusni@gmail.com)<br><br>")
-        f.write("Data refreshed: " + current_time + " (MYT)")
+        f.write("Data refreshed: " + current_time + " (MYT)<br>*For mobile, please use horizontal mode (rotate)")
         f.write(Close)
 
         f.write(RowOpen)
@@ -116,8 +116,8 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write("<br>Licenses: Official datapoint: <a href='https://www.data.gov.my/p/pekeliling-data-terbuka'>Pekeliling Pelaksanaan Data Terbuka Bil.1/2015 (Appendix B)</a>")
         f.write(Close)
 
-    connect_str = # REDACTED
-    container = # REDACTED
+    connect_str = #REDACTED
+    container = #REDACTED
 
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     blob_client = blob_service_client.get_blob_client(container=container, blob="index.html")

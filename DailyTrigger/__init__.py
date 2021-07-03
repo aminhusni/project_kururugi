@@ -18,6 +18,7 @@ def main(mytimer: func.TimerRequest) -> None:
 
     logging.info('Python timer trigger function ran at %s', utc_timestamp)
 
+    # Get the current generation time in MYT timezone
     timeZ_My = pytz.timezone('Asia/Kuala_Lumpur')
     now = datetime.datetime.now(timeZ_My)
     current_time = now.strftime("%d/%m/%Y %H:%M:%S")
@@ -40,9 +41,45 @@ def main(mytimer: func.TimerRequest) -> None:
                                 },
                                 title='Total Vaccination Dose')
 
+
+    single_dose_total = df['dose1_cumul'].iloc[-1:].item()
+    population_total = 32764602
+    unvaccinated = population_total - single_dose_total
+
+    progress_frame = [{'type': 'Vaccinated', 'total': single_dose_total},
+                    {'type': 'Unvaccinated', 'total': unvaccinated} 
+                        ]
+
+    df2 = pd.DataFrame(progress_frame)
+    progress_total = px.pie(df2, title='Vaccination Progress (at least 1 dose)', values='total', names='type', color='type',
+                            color_discrete_map={
+                                'Vaccinated': '#3cb64c',
+                                'Unvaccinated': '#29255f'
+                            }
+                            )
+
+    double_dose_total = df['dose2_cumul'].iloc[-1:].item()
+    population_total = 32764602
+    unvaccinated = population_total - double_dose_total
+
+    progress2_frame = [{'type': 'Vaccinated', 'total': double_dose_total},
+                    {'type': 'Unvaccinated', 'total': unvaccinated} 
+                        ]
+
+    df3 = pd.DataFrame(progress2_frame)
+    progress2_total = px.pie(df3, title='Vaccination Progress (2 doses)', values='total', names='type', color='type',
+                            color_discrete_map={
+                                'Vaccinated': '#3cb64c',
+                                'Unvaccinated': '#29255f'
+                            }
+                            )
+
+
     # Convert plotted graph into HTML div
     daily_rate_plot = vaccination_rate.to_html(full_html=False)
     daily_rate_plot2 = vaccinated_total.to_html(full_html=False)
+    progress_plot = progress_total.to_html(full_html=False)
+    progress2_plot = progress2_total.to_html(full_html=False)
 
     # Generate day name based on date
     df['date'] = pd.to_datetime(df['date'])
@@ -55,7 +92,7 @@ def main(mytimer: func.TimerRequest) -> None:
                             "day_of_week": "",
                             "total_daily": "Total doses administered to date"
                         },
-                        title='Doses administered by day distribution')
+                        title='Doses administed by day distribution')
 
     # Convert plotted graph into HTML div
     day_trend_plot = day_trend.to_html(full_html=False)
@@ -63,27 +100,21 @@ def main(mytimer: func.TimerRequest) -> None:
     # Get datapoints for per state in Malaysia
     url = "https://raw.githubusercontent.com/CITF-Malaysia/citf-public/main/vaccination/vax_state.csv"
     df = pd.read_csv(url)
-
-    # Take the latest date's data (16 states)
     df_trim = df.iloc[-16:]
-    # Sort rank by most doses
     df_trim = df_trim.sort_values('total_cumul')
 
-    # Plot the graph
     state_progress = px.bar(df_trim, x="total_cumul", y="state", 
                             labels={
                                 "total_cumul": "Doses",
                                 "state": "State",
                             },
-                            title='Doses administered by state',
+                            title='Doses administed by state',
 
                             orientation='h')
-                            
-    # Convert plotted graph into HTML div
     state_plot = state_progress.to_html(full_html=False)
 
     # Crude HTML templates
-    HeadTemplate = '<!DOCTYPE html><html> <head><script async src="https://www.googletagmanager.com/gtag/js?id=G-JM59LT7FPT"></script><script>window.dataLayer=window.dataLayer || []; function gtag(){dataLayer.push(arguments);}gtag(\'js\', new Date()); gtag(\'config\', \'G-JM59LT7FPT\');</script> <meta name="viewport" content="width=device-width, initial-scale=1.0"><meta property="og:image" content="https://kururugi.blob.core.windows.net/kururugi/screenshot.jpg"/><meta property="og:title" content="Project Kururugi"/><meta property="og:description" content="Analysis and plotting of the official vaccination statistics data from JKJAV Malaysia"/> <style>*{box-sizing: border-box;}.header{padding: 15px;}.row::after{content: ""; clear: both; display: table;}[class*="col-"]{float: left; padding: 15px; border: 1px solid rgba(9, 255, 0, 0.733);}.col-1{width: 50%;}</style> </head> <body> <div class="header">'
+    HeadTemplate = '<!DOCTYPE html><html> <head><script async src="https://www.googletagmanager.com/gtag/js?id=G-JM59LT7FPT"></script><script>window.dataLayer=window.dataLayer || []; function gtag(){dataLayer.push(arguments);}gtag(\'js\', new Date()); gtag(\'config\', \'G-JM59LT7FPT\');</script> <meta name="viewport" content="width=device-width, initial-scale=1.0"><meta property="og:image" content="https://kururugi.blob.core.windows.net/kururugi/screenshot.jpg"/><meta property="og:title" content="Project Kururugi"/><meta property="og:description" content="Analysis and plotting of the official vaccination statistics data from JKJAV Malaysia"/> <style>*{box-sizing: border-box;}.header{padding: 15px;}.row::after{content: ""; clear: both; display: table;}[class*="col-"]{float: left; padding: 15px; border: 1px solid rgb(60, 182, 76);}.col-1{width: 50%;}</style> </head> <body> <div class="header">'
     Close = '</div>'
     RowOpen = '<div class="row">'
     ColOpen = '<div class="col-1">'
@@ -115,6 +146,15 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write(Close)
         f.write(ColOpen)
         f.write(state_plot)
+        f.write(Close)
+        f.write(Close)
+
+        f.write(RowOpen)
+        f.write(ColOpen)
+        f.write(progress_plot)
+        f.write(Close)
+        f.write(ColOpen)
+        f.write(progress2_plot)
         f.write(Close)
         f.write(Close)
 

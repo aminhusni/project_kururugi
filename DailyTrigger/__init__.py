@@ -57,7 +57,7 @@ def main(mytimer: func.TimerRequest) -> None:
     vaccinated_total = px.line(df, x = 'date', y = 'total_cumul',
                                 labels={
                                     "date": "",
-                                    "total_cumul": "Daily doses"
+                                    "total_cumul": "Doses to date"
                                 },
                                 title='Total Vaccination Dose')
     vaccinated_total.update_traces(line_color='#1f822c')
@@ -156,6 +156,7 @@ def main(mytimer: func.TimerRequest) -> None:
     state_dose1_pct = px.bar(df_trim_pop.sort_values('vax1_pct'), x=["vax1_pct", "unvax1"], y="state", 
                             labels={
                                 "state": "State",
+                                "value": "Percentage"
                             },
                             color_discrete_map={
                                 'vax1_pct': '#3cb64c',
@@ -175,6 +176,7 @@ def main(mytimer: func.TimerRequest) -> None:
     state_dose2_pct = px.bar(df_trim_pop.sort_values('vax2_pct'), x=["vax2_pct", "unvax2"], y="state", 
                             labels={
                                 "state": "State",
+                                "value": "Percentage"
                             },
                             color_discrete_map={
                                 'vax2_pct': '#3cb64c',

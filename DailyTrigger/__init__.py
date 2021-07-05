@@ -3,12 +3,14 @@ import logging
 import os
 import pytz
 import pathlib
+import math
 
 import azure.functions as func
 from azure.storage.blob import BlobServiceClient, BlobClient, ContentSettings
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 def main(mytimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(
@@ -42,25 +44,126 @@ def main(mytimer: func.TimerRequest) -> None:
                                 },
                                 labels={
                                     "date": "",
+                                    "value": "Doses"
                                 },
                                 title='Daily Vaccination Rate (Doses)')
 
+    vaccination_rate.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['7_rolling_avg'].iloc[-1:].item(),
+                                            number = {'prefix': "Avg "},
+                                            delta = {
+                                                'reference' : df['7_rolling_avg'].iloc[-2].item(),
+                                                "valueformat": ",.0f",
+                                                'increasing.color': "#FF9D3C",
+                                                'decreasing.color': "#FF9D3C",
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.03, 0.35], 'y': [0.70, 0.95]}
+    ))
+
+    vaccination_rate.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['dose1_daily'].iloc[-1:].item(),
+                                            number = {'prefix': "Today 1st Dose "},
+                                            delta = {
+                                                'reference' : df['dose1_daily'].iloc[-2].item(),
+                                                "valueformat": ",.0f",
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.03, 0.35], 'y': [0.40, 0.70]}
+    ))
+
+    vaccination_rate.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['dose2_daily'].iloc[-1:].item(),
+                                            number = {'prefix': "Today 2nd Dose "},
+                                            delta = {
+                                                'reference' : df['dose2_daily'].iloc[-2].item(),
+                                                "valueformat": ",.0f",
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.03, 0.35], 'y': [0.20, 0.50]}
+    ))
+
+
     # Make the line labeling nicer
-    series_names = ["Daily doses", "7-day Rolling Avg"]
+    series_names = ["Daily doses", "Week Roll Avg"]
 
     for idx, name in enumerate(series_names):
         vaccination_rate.data[idx].name = name
-        vaccination_rate.data[idx].hovertemplate = name
 
 
     # Total vaccination dose (overall)
-    vaccinated_total = px.line(df, x = 'date', y = 'total_cumul',
+    vaccinated_total = px.line(df, x = 'date', y = ['total_cumul', 'dose1_cumul', 'dose2_cumul'],
+                                color_discrete_map={
+                                    "total_cumul": "#1f822c",
+                                    "dose1_cumul": "#FF9D3C",
+                                    "dose2_cumul": "#29255f",
+                                },
                                 labels={
                                     "date": "",
-                                    "total_cumul": "Doses to date"
+                                    "value": "Doses to date"
                                 },
-                                title='Total Vaccination Dose')
-    vaccinated_total.update_traces(line_color='#1f822c')
+                                title='Total Vaccination Dose Administered')
+
+    vaccinated_total.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['total_cumul'].iloc[-1:].item(),
+                                            number = {'prefix': "Total: " },
+                                            delta = {
+                                                'reference' : df['total_cumul'].iloc[-2].item(),
+                                                "valueformat": ",0f"
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.05, 0.3], 'y': [0.60, 0.98]}
+    ))
+
+    vaccinated_total.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['dose1_cumul'].iloc[-1:].item(),
+                                            number = {'prefix': "1st Dose: " },
+                                            delta = {
+                                                'reference' : df['dose1_cumul'].iloc[-2].item(),
+                                                "valueformat": ",.0f",
+                                                'increasing.color': "#FF9D3C",
+                                                'decreasing.color': "#FF9D3C",
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.04, 0.3], 'y': [0.37, 0.60]}
+    ))
+
+    vaccinated_total.add_trace(go.Indicator(
+                                            mode = "number+delta",
+                                            value = df['dose2_cumul'].iloc[-1:].item(),
+                                            number = {'prefix': "2nd Dose: " },
+                                            delta = {
+                                                'reference' : df['dose2_cumul'].iloc[-2].item(),
+                                                "valueformat": ",.0f",
+                                                'increasing.color': "#29255f",
+                                                'decreasing.color': "#29255f",
+                                            },
+                                            gauge = {
+                                                'axis': {'visible': False}
+                                            },
+                                            domain = {'x': [0.04, 0.3], 'y': [0.12, 0.5]}
+    ))
+
+    series_names = ['Total Dose', '1st Dose', '2nd Dose']
+
+    for idx, name in enumerate(series_names):
+        vaccinated_total.data[idx].name = name
+
 
     # Calculate the amount of people vaccinated vs unvaccinated
     # Get 1 dose total to date
@@ -107,14 +210,21 @@ def main(mytimer: func.TimerRequest) -> None:
     df['date'] = pd.to_datetime(df['date'])
     df['day_of_week'] = df['date'].dt.day_name()
 
+    limit = len(df)
+    nearest_multiple  = 7 * math.floor(limit/7)
+    df_trim_week = df.iloc[:nearest_multiple]
+
+    title_graph = "Doses administered by day distribution from " + df_trim_week['date'].iloc[:1].item().strftime('%Y-%m-%d') + " to " + df_trim_week['date'].iloc[-1:].item().strftime('%Y-%m-%d')
+
     # Plot the graph
-    day_trend = px.bar(df, x='day_of_week', y='total_daily', 
+    day_trend = px.bar(df_trim_week, x='day_of_week', y='total_daily', 
                         category_orders={'day_of_week': ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]},
                         labels={
                             "day_of_week": "",
                             "total_daily": "Total doses administered to date"
                         },
-                        title='Doses administed by day distribution')
+                        title=title_graph
+                        )
     day_trend.update_traces(marker_color='#1f822c')
 
     # PER STATE DATA
@@ -127,10 +237,9 @@ def main(mytimer: func.TimerRequest) -> None:
     state_progress = px.bar(df_trim, x="total_cumul", y="state", 
                             labels={
                                 "total_cumul": "Doses",
-                                "state": "State",
+                                "state": "States",
                             },
-                            
-                            title='Doses administed by state',
+                            title='Doses administered by state',
 
                             orientation='h')
     state_progress.update_traces(marker_color='#1f822c')
@@ -155,42 +264,38 @@ def main(mytimer: func.TimerRequest) -> None:
 
     state_dose1_pct = px.bar(df_trim_pop.sort_values('vax1_pct'), x=["vax1_pct", "unvax1"], y="state", 
                             labels={
-                                "state": "State",
+                                "state": "States",
                                 "value": "Percentage"
                             },
                             color_discrete_map={
                                 'vax1_pct': '#3cb64c',
                                 'unvax1': '#29255f'
                                 },
-                            title='Percentage vaccinated (1 dose) by state',
+                            title='Percentage vaccinated by state (at least 1 dose)',
                             orientation='h')
 
     # Make the bar labeling nicer
-    series_names = ["Vaccinated", "Population"]
-
-    for idx, name in enumerate(series_names):
-        state_dose1_pct.data[idx].name = name
-        state_dose1_pct.data[idx].hovertemplate = name
+    state_dose1_pct.data[0].name = "Vaccinated"
+    state_dose1_pct.data[1].name = "Population"
+    state_dose1_pct.data[1].hovertemplate = "Population"
 
 
     state_dose2_pct = px.bar(df_trim_pop.sort_values('vax2_pct'), x=["vax2_pct", "unvax2"], y="state", 
                             labels={
-                                "state": "State",
+                                "state": "States",
                                 "value": "Percentage"
                             },
                             color_discrete_map={
                                 'vax2_pct': '#3cb64c',
                                 'unvax2': '#29255f'
                                 },
-                            title='Percentage vaccinated (2 doses) by state',
+                            title='Percentage vaccinated by state (2 doses)',
                             orientation='h')
 
     # Make the bar labeling nicer
-    series_names = ["Vaccinated", "Population"]
-
-    for idx, name in enumerate(series_names):
-        state_dose2_pct.data[idx].name = name
-        state_dose2_pct.data[idx].hovertemplate = name
+    state_dose2_pct.data[0].name = "Vaccinated"
+    state_dose2_pct.data[1].name = "Population"
+    state_dose2_pct.data[1].hovertemplate = "Population"
 
     # Bar graph showing each state's progress based on percentage (per 100)
 
@@ -214,8 +319,8 @@ def main(mytimer: func.TimerRequest) -> None:
     # Generate the static HTML page
     with open("/tmp/index.html", "w") as f:
         f.write(HeadTemplate)
-        f.write("<h1>Vaccination Statistics Malaysia</h1>")
-        f.write("<a href='https://kururugi.blob.core.windows.net/kururugi/about.html'>Technical details & about</a><br>Coded by: Amin Husni (aminhusni@gmail.com)<br><br>")
+        f.write("<h1>VACCINATION STATISTICS MALAYSIA</h1>")
+        f.write("<a href='https://kururugi.blob.core.windows.net/kururugi/about.html'>Technical details, data source & about</a><br>Coded by: Amin Husni (aminhusni@gmail.com)<br><br>")
         f.write("Data refreshed: " + current_time + " (MYT)<br>")
         f.write("Latest date in data: " + last_date_data + "<br><br></div>")
         f.write(Close)
@@ -224,9 +329,7 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write(ColOpen)
         f.write(daily_rate_plot)
         f.write(Close)
-
-        #f.write("<h2>Malaysian population: 32,764,602 people<br>Target vaccination (80%): 26,211,682</h2>")
-        
+    
         f.write(ColOpen)
         f.write(daily_rate_plot2)
         f.write(Close)
@@ -260,8 +363,8 @@ def main(mytimer: func.TimerRequest) -> None:
         f.write(Close)
 
         f.write(RowOpen)
-        f.write("<br>Licenses: Official datapoint: <a href='https://www.data.gov.my/p/pekeliling-data-terbuka'>Pekeliling Pelaksanaan Data Terbuka Bil.1/2015 (Appendix B)</a> <a href='https://kururugi.blob.core.windows.net/kururugi/about.html'>    More & Contact</a><br>")
-        f.write("<a href='https://github.com/aminhusni/project_kururugi/blob/main/LICENSE'>Copyright (C) 2021 Amin Husni. MIT License</a>")
+        f.write("<br>Licenses: Official datapoint: <a href='https://www.data.gov.my/p/pekeliling-data-terbuka'>Pekeliling Pelaksanaan Data Terbuka Bil.1/2015 (Appendix B)</a> <br>")
+        f.write("<a href='https://github.com/aminhusni/project_kururugi/blob/main/LICENSE'>Copyright (C) 2021 Amin Husni. MIT License</a><a href='https://kururugi.blob.core.windows.net/kururugi/about.html'>    More & Contact</a>")
         f.write(Close)
 
     connect_str = # REDACTED

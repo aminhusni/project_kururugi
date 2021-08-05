@@ -286,6 +286,8 @@ def main(mytimer: func.TimerRequest) -> None:
     df_trim_pop['unvax1'] = ((df_trim_pop['pop']-df_trim_dose['dose1_cumul'])/df_trim_pop['pop'])*100
     df_trim_pop['unvax2'] = ((df_trim_pop['pop']-df_trim_dose['dose2_cumul'])/df_trim_pop['pop'])*100
 
+    df_trim_pop['unvax1'] = (df_trim_pop['unvax1'] + abs(df_trim_pop['unvax1'])) / 2
+    df_trim_pop['unvax2'] = (df_trim_pop['unvax2'] + abs(df_trim_pop['unvax2'])) / 2
 
     state_dose1_pct = px.bar(df_trim_pop.sort_values('vax1_pct'), x=["vax1_pct", "unvax1"], y="state", 
                             labels={
